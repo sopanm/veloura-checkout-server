@@ -1,0 +1,7 @@
+{
+  "name": "veloura-checkout-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node api/auth.js"
+  }
+}
