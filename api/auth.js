@@ -3,7 +3,7 @@ export default async function handler(req, res) {
   const CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
   const CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
   
-  const REDIRECT_URI = `https://${req.headers.host}/api/auth`;
+const REDIRECT_URI = 'https://veloura-checkout-server.vercel.app/api/callback';
   const { code } = req.query;
 
   if (!code) {
