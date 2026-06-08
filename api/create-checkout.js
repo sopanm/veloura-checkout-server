@@ -44,3 +44,16 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server Error' });
   }
 }
+const line_items = [
+  {
+    title: title,
+    quantity: 1,
+    price: finalPrice.toString(), // Final price ko string mein bhejna zaroori hai
+    properties: properties
+  }
+];
+
+const draftOrder = await shopify.draftOrder.create({
+  line_items: line_items,
+  // ...
+});
