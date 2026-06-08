@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
@@ -9,24 +8,31 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { variantId, finalPrice, properties, title } = req.body;
+  const { variantId, extraPrice, properties, title } = req.body;
   const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
   const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-  // Validation
-  if (!finalPrice) {
-    return res.status(400).json({ error: 'Failed', details: 'Price is missing' });
+  // Item 1: Main Ring (Ye image aur base price automatic Shopify se le lega)
+  let line_items = [
+    {
+      variant_id: variantId,
+      quantity: 1,
+      properties: properties
+    }
+  ];
+
+  // Item 2: Agar custom diamond/metal add kiya hai, toh extra charge yahan add hoga
+  if (extraPrice && parseFloat(extraPrice) > 0) {
+    line_items.push({
+      title: "💎 Bespoke Upgrades (Center Diamond & Metal)",
+      price: extraPrice.toString(),
+      quantity: 1
+    });
   }
 
   const draftOrderPayload = {
     draft_order: {
-      line_items: [{
-        variant_id: variantId, // Ye variable ID honi chahiye
-        quantity: 1,
-        price: finalPrice.toString(), // 🛑 FIX: Price ko String mein convert karna zaroori hai
-        properties: properties,
-        title: title || "Bespoke Creation"
-      }],
+      line_items: line_items,
       use_customer_default_address: true
     }
   };
@@ -46,7 +52,6 @@ export default async function handler(req, res) {
     if (data.draft_order) {
       return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
-      // Yahan se error console mein dikhega
       return res.status(400).json({ error: 'Failed', details: data });
     }
   } catch (error) {
