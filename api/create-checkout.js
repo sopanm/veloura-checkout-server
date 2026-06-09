@@ -12,23 +12,24 @@ export default async function handler(req, res) {
   try {
     const { finalPrice, properties, title } = req.body;
     
-    // Exact Total Price ko string mein pakad rahe hain
+    // Fallback error-proof price
     const priceToUse = finalPrice || "0.00";
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-    // 🛑 MASTER FIX: variant_id HATA DIYA! Ab Shopify base price nahi chipkayega.
+    // 🛑 MASTER FIX: Custom Item (No Variant ID) taaki price exact wahi aaye jo bheji hai
     const draftOrderPayload = {
       draft_order: {
         line_items: [
           {
             title: title || "Velouraa Bespoke Ring",
-            price: String(priceToUse), // Yahan aapka $1739 aayega
+            price: String(priceToUse),
             quantity: 1,
             properties: properties
           }
-        ]
+        ],
+        use_customer_default_address: true
       }
     };
 
