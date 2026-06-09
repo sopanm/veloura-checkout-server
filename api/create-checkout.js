@@ -8,32 +8,22 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { variantId, extraPrice, properties, title } = req.body;
+  const { variantId, finalPrice, properties } = req.body;
   const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
   const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-  // Item 1: Main Ring (Ye image aur base price automatic Shopify se le lega)
-  let line_items = [
-    {
-      variant_id: variantId,
-      quantity: 1,
-      properties: properties
-    }
-  ];
-
-  // Item 2: Agar custom diamond/metal add kiya hai, toh extra charge yahan add hoga
-  if (extraPrice && parseFloat(extraPrice) > 0) {
-    line_items.push({
-      title: "💎 Bespoke Upgrades (Center Diamond & Metal)",
-      price: extraPrice.toString(),
-      quantity: 1
-    });
-  }
-
+  // Single Item Logic: Variant ID ke sath seedha EXACT Final Price
+  // 🛑 FIX: use_customer_default_address ko hata diya gaya hai taaki Shopify price override na kare
   const draftOrderPayload = {
     draft_order: {
-      line_items: line_items,
-      use_customer_default_address: true
+      line_items: [
+        {
+          variant_id: variantId,
+          quantity: 1,
+          price: finalPrice.toString(), 
+          properties: properties
+        }
+      ]
     }
   };
 
