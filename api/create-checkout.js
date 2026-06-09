@@ -10,26 +10,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const body = req.body || {};
-    const finalPrice = body.finalPrice || "0.00";
-    const properties = body.properties || [];
-    const title = body.title || "💎 Velouraa Bespoke Ring"; 
+    // Frontend se aane wala data
+    const { variantId, properties } = req.body;
+    
+    // 🛑 MASTER FIX: Price ko pakadne ka Bulletproof tareeqa
+    const priceToUse = req.body.finalPrice || req.body.extraPrice || "0.00";
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-    // 🛑 MASTER FIX: Custom Line Item (No variant_id) to force EXACT total price
+    // Draft Order Payload (Single Item, Photo ke sath, Sahi Price)
     const draftOrderPayload = {
       draft_order: {
         line_items: [
           {
-            title: title,
-            price: String(finalPrice),
+            variant_id: parseInt(variantId, 10), // Asli photo lane ke liye
             quantity: 1,
+            price: String(priceToUse), // Exact total price
             properties: properties
           }
-        ],
-        use_customer_default_address: true
+        ]
+        // "use_customer_default_address" hata diya taaki region based tax ka jhagda na ho
       }
     };
 
@@ -50,8 +51,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Shopify Rejected', details: data });
     }
   } catch (error) {
-    // Isse "Server Connection Error" (500) crash handle ho jayega
-    console.error("Vercel Crash Error:", error);
     return res.status(500).json({ error: 'Server Crash', details: error.message });
   }
 }
