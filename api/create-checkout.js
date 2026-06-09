@@ -9,25 +9,30 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  const { variantId, finalPrice, properties } = req.body;
-  const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
-  const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
-
-  // 🛑 THE FIX: variant_id MUST be a Number, price MUST be a String.
-  const draftOrderPayload = {
-    draft_order: {
-      line_items: [
-        {
-          variant_id: parseInt(variantId, 10), // Isse Text -> Number ban jayega
-          quantity: 1,
-          price: finalPrice.toString(), // Isse Number -> Text ban jayega
-          properties: properties
-        }
-      ]
-    }
-  };
-
   try {
+    const body = req.body || {};
+    const finalPrice = body.finalPrice || "0.00";
+    const properties = body.properties || [];
+    const title = body.title || "💎 Velouraa Bespoke Ring"; 
+
+    const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
+    const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
+
+    // 🛑 MASTER FIX: Custom Line Item (No variant_id) to force EXACT total price
+    const draftOrderPayload = {
+      draft_order: {
+        line_items: [
+          {
+            title: title,
+            price: String(finalPrice),
+            quantity: 1,
+            properties: properties
+          }
+        ],
+        use_customer_default_address: true
+      }
+    };
+
     const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/draft_orders.json`, {
       method: 'POST',
       headers: {
@@ -39,13 +44,14 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    if (data.draft_order) {
+    if (response.ok && data.draft_order) {
       return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
-      // Agar ab bhi fail hua, toh humein exact error dikhega
       return res.status(400).json({ error: 'Shopify Rejected', details: data });
     }
   } catch (error) {
-    return res.status(500).json({ error: 'Server Error', details: error.message });
+    // Isse "Server Connection Error" (500) crash handle ho jayega
+    console.error("Vercel Crash Error:", error);
+    return res.status(500).json({ error: 'Server Crash', details: error.message });
   }
 }
