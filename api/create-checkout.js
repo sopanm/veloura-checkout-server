@@ -22,7 +22,7 @@ export default async function handler(req, res) {
             properties: properties // Saari details photo ke niche dikhengi
           },
           {
-            title: "💎 Bespoke Upgrades (Center Diamond & Premium Metal)", 
+            title: "💎 Bespoke Upgrades (Center Diamond)", 
             price: parseFloat(upgradePrice || 0).toFixed(2), // 👉 Isse baaki price add hogi
             quantity: 1
           }
