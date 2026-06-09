@@ -1,32 +1,26 @@
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { finalPrice, properties, title } = req.body;
-    
-    // Fallback error-proof price
-    const priceToUse = finalPrice || "0.00";
-
+    const { finalPrice, properties, title, imageUrl } = req.body;
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-    // 🛑 MASTER FIX: Custom Item (No Variant ID) taaki price exact wahi aaye jo bheji hai
+    // 🛑 PRO FIX: Variant ID hataya, par Custom Item ka price lock kar diya
     const draftOrderPayload = {
       draft_order: {
         line_items: [
           {
             title: title || "Velouraa Bespoke Ring",
-            price: String(priceToUse),
+            price: String(finalPrice),
             quantity: 1,
             properties: properties
+            // Image yahan se nahi, Shopify product link se aayegi
           }
         ],
         use_customer_default_address: true
@@ -43,7 +37,6 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-
     if (response.ok && data.draft_order) {
       return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
