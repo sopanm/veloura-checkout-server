@@ -1,22 +1,11 @@
 export default async function handler(req, res) {
-  // 🛑 THE FIX: Specific VIP Pass for CORS
+  // CORS fallback inside the function
   res.setHeader('Access-Control-Allow-Credentials', true);
-  
-  // Aapke exact store domain ko VIP pass de rahe hain
-  const origin = req.headers.origin;
-  if (origin === 'https://velouraagems.com' || origin === 'https://www.velouraagems.com') {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Fallback
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
-  // Preflight request ko handle karna (Bohot zaruri)
+  // Handle preflight request immediately
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -24,8 +13,8 @@ export default async function handler(req, res) {
   try {
     const { finalPrice, properties, title } = req.body;
     
-    // Price ko valid string format me badalna ("1739.00")
-    const numericPrice = parseFloat(finalPrice).toFixed(2);
+    // Ensure numeric price string
+    const numericPrice = parseFloat(finalPrice || "0.00").toFixed(2);
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
@@ -39,8 +28,7 @@ export default async function handler(req, res) {
             quantity: 1,
             properties: properties
           }
-        ],
-        use_customer_default_address: true // Shopify calculation ke liye (lekin humne variantId hata diya hai toh overwrite nahi hoga)
+        ]
       }
     };
 
@@ -58,7 +46,7 @@ export default async function handler(req, res) {
     if (response.ok && data.draft_order) {
       return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
-      console.error("Shopify Reject:", data);
+      console.error("Shopify Reject Details:", data);
       return res.status(400).json({ error: 'Shopify Rejected', details: data });
     }
   } catch (error) {
