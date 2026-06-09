@@ -1,20 +1,21 @@
 export default async function handler(req, res) {
-  // CORS fallback inside the function
+  // 🛑 MASTER CORS FIX: Har website se aane wali request allow karega
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  // Handle preflight request immediately
+  // Preflight check pass
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   try {
-    const { finalPrice, properties, title } = req.body;
-    
-    // Ensure numeric price string
-    const numericPrice = parseFloat(finalPrice || "0.00").toFixed(2);
+    const body = req.body || {};
+    const finalPrice = body.finalPrice || "0.00";
+    const properties = body.properties || [];
+    const title = body.title || "Velouraa Bespoke Ring";
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
@@ -23,8 +24,8 @@ export default async function handler(req, res) {
       draft_order: {
         line_items: [
           {
-            title: title || "Velouraa Bespoke Ring",
-            price: numericPrice,
+            title: title,
+            price: parseFloat(finalPrice).toFixed(2), // Force text format string
             quantity: 1,
             properties: properties
           }
@@ -44,13 +45,11 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (response.ok && data.draft_order) {
-      return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
+      res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
-      console.error("Shopify Reject Details:", data);
-      return res.status(400).json({ error: 'Shopify Rejected', details: data });
+      res.status(400).json({ error: 'Shopify Rejected', details: data });
     }
   } catch (error) {
-    console.error("Server Crash:", error);
-    return res.status(500).json({ error: 'Server Crash', details: error.message });
+    res.status(500).json({ error: 'Server Crash', details: error.message });
   }
 }
