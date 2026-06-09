@@ -10,27 +10,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Frontend se aane wala data
-    const { variantId, properties } = req.body;
+    const { finalPrice, properties, title } = req.body;
     
-    // 🛑 MASTER FIX: Price ko pakadne ka Bulletproof tareeqa
-    const priceToUse = req.body.finalPrice || req.body.extraPrice || "0.00";
+    // Exact Total Price ko string mein pakad rahe hain
+    const priceToUse = finalPrice || "0.00";
 
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
 
-    // Draft Order Payload (Single Item, Photo ke sath, Sahi Price)
+    // 🛑 MASTER FIX: variant_id HATA DIYA! Ab Shopify base price nahi chipkayega.
     const draftOrderPayload = {
       draft_order: {
         line_items: [
           {
-            variant_id: parseInt(variantId, 10), // Asli photo lane ke liye
+            title: title || "Velouraa Bespoke Ring",
+            price: String(priceToUse), // Yahan aapka $1739 aayega
             quantity: 1,
-            price: String(priceToUse), // Exact total price
             properties: properties
           }
         ]
-        // "use_customer_default_address" hata diya taaki region based tax ka jhagda na ho
       }
     };
 
