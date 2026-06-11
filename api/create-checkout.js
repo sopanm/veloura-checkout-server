@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
     
     // 🛑 APNA HIDDEN PRODUCT ID YAHAN DAALEIN (Jo aapne Shopify admin se banaya)
-    const UPGRADE_PRODUCT_ID = "58048354976047";
+    const UPGRADE_PRODUCT_ID = "16013941014831";
     
     const priceToSet = parseFloat(upgradePrice || 0).toFixed(2);
 
