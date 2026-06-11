@@ -2,59 +2,50 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { upgradePrice } = req.body;
-    
+    const { variantId, upgradePrice, properties } = req.body;
+
     const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
-    
-    // 🛑 APNA HIDDEN PRODUCT ID YAHAN DAALEIN (Jo aapne Shopify admin se banaya)
-    const UPGRADE_PRODUCT_ID = "16013941014831";
-    
-    const priceToSet = parseFloat(upgradePrice || 0).toFixed(2);
 
-    // 1. Pehle check karein kya is price ka variant pehle se bana hua hai? (To keep it fast)
-    const getVariants = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/products/${UPGRADE_PRODUCT_ID}/variants.json`, {
-      method: 'GET',
-      headers: { 'X-Shopify-Access-Token': ACCESS_TOKEN }
-    });
-    const existingVariants = await getVariants.json();
-    
-    if (existingVariants.variants) {
-      const foundVariant = existingVariants.variants.find(v => parseFloat(v.price).toFixed(2) === priceToSet);
-      if (foundVariant) {
-        // Agar mil gaya, toh purana ID hi bhej do (Fastest)
-        return res.status(200).json({ customVariantId: foundVariant.id });
+    // 🛑 MASTER FIX: 1 Item for Photo, 1 Item for Custom Price Balance
+    const draftOrderPayload = {
+      draft_order: {
+        line_items: [
+          {
+            variant_id: parseInt(variantId, 10), // 👉 Isse RING KI PHOTO aayegi!
+            quantity: 1,
+            properties: properties // Saari details photo ke niche dikhengi
+          },
+          {
+            title: "💎 Bespoke Upgrades (Center Diamond)", 
+            price: parseFloat(upgradePrice || 0).toFixed(2), // 👉 Isse baaki price add hogi
+            quantity: 1
+          }
+        ]
       }
-    }
+    };
 
-    // 2. Agar nahi mila, toh naya variant banayein exact price ke sath
-    const createVariantResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/products/${UPGRADE_PRODUCT_ID}/variants.json`, {
+    const response = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/draft_orders.json`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Shopify-Access-Token': ACCESS_TOKEN
       },
-      body: JSON.stringify({
-        variant: {
-          price: priceToSet,
-          option1: `Build-${Date.now()}`, 
-          inventory_policy: "continue", // Taaki stock ka issue na aaye
-          requires_shipping: false
-        }
-      })
+      body: JSON.stringify(draftOrderPayload)
     });
 
-    const variantData = await createVariantResponse.json();
+    const data = await response.json();
 
-    if (createVariantResponse.ok && variantData.variant) {
-      return res.status(200).json({ customVariantId: variantData.variant.id });
+    if (response.ok && data.draft_order) {
+      return res.status(200).json({ checkoutUrl: data.draft_order.invoice_url });
     } else {
-      return res.status(400).json({ error: 'Variant API Error', details: variantData });
+      console.error("Shopify Reject:", data);
+      return res.status(400).json({ error: 'Shopify Rejected', details: data });
     }
   } catch (error) {
     return res.status(500).json({ error: 'Server Crash', details: error.message });
